@@ -1,6 +1,7 @@
 #include "plugin.h"
 #include "plugin_helpers.h"
 #include "plugin_config.h"
+#include "cameracontrols_fields.h"
 
 #include "camera_rig.h"
 #include "control_probe.h"
@@ -54,7 +55,12 @@ static PluginInfo s_pluginInfo = {
 	"AlienX",
 	"Keyframe camera timeline editor -- fly, keyframe, scrub and play back cinematic camera moves",
 	PLUGIN_INTERFACE_VERSION,
-	PLUGIN_TARGET_THIS
+	PLUGIN_TARGET_THIS,
+	PLUGIN_GAME_BUILT_CL,
+	// TODO: set PLUGIN_MAP_MIGRATED once the loader admits plugins by built CL
+	// and the CI check of the used set passes for this plugin (version-map
+	// steps 20 and 29). Until then it stays 0.
+	0
 };
 
 namespace
@@ -92,7 +98,7 @@ namespace
 	{
 		try
 		{
-			SDK::UWorld* world = SDK::UWorld::GetWorld();
+			SDK::UWorld* world = PluginSdkRuntime::GetWorld();
 			g_inChimeraMain = world && world->GetName() == kWorldName;
 		}
 		catch (...)
@@ -1627,8 +1633,18 @@ extern "C" {
 		return &s_pluginInfo;
 	}
 
+	__declspec(dllexport) void OnPluginLoadHooks(IPluginSelf* self, IPluginHookScanner* scanner)
+	{
+		g_self = self;
+		CameraControlsFields::Resolve(self, scanner);
+	}
+
 	__declspec(dllexport) bool PluginInit(IPluginSelf* self)
 	{
+		// First, before any early return: off its game build the loader refuses
+		// a plugin whose PluginInit did not take the globals.
+		PluginSdkRuntime::Init(self->hooks);
+
 		try
 		{
 			g_self = self;
@@ -1673,7 +1689,7 @@ extern "C" {
 			// directly rather than waiting for a callback that will not come.
 			try
 			{
-				SDK::UWorld* world = SDK::UWorld::GetWorld();
+				SDK::UWorld* world = PluginSdkRuntime::GetWorld();
 				if (world && world->GetName() == kWorldName)
 				{
 					g_inChimeraMain = true;

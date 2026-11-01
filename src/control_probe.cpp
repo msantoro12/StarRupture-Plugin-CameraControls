@@ -6,6 +6,7 @@
 #include "player_safeguard.h"
 #include "player_vitals.h"
 #include "plugin_helpers.h"
+#include "cameracontrols_fields.h"
 #include "viewport_fit.h"
 
 #include "Chimera_classes.hpp"
@@ -157,7 +158,7 @@ namespace CameraControls::Probe
 
 		SDK::UWorld* GetWorld()
 		{
-			try { return SDK::UWorld::GetWorld(); }
+			try { return PluginSdkRuntime::GetWorld(); }
 			catch (...) { return nullptr; }
 		}
 
@@ -325,13 +326,18 @@ namespace CameraControls::Probe
 		// -------------------------------------------------------------------
 		void CaptureControllerBits(SDK::APlayerController* pc, Snapshot& snapshot)
 		{
-			constexpr int kBitsOffset      = 0x4D0;
 			constexpr int kWaitingBitIndex = 4;
 
 			try
 			{
-				const uint8_t byte =
-					*(reinterpret_cast<const uint8_t*>(pc) + kBitsOffset);
+				const uint8_t* bitsAt = CameraControlsFields::ControllerBits.In(pc);
+				if (!bitsAt)
+				{
+					Add(snapshot, "pcbits", "ptr", "unavailable");
+					return;
+				}
+
+				const uint8_t byte = *bitsAt;
 
 				const bool rawWaiting    = (byte & (1u << kWaitingBitIndex)) != 0;
 				const bool headerWaiting = pc->bPlayerIsWaiting != 0;
@@ -341,7 +347,7 @@ namespace CameraControls::Probe
 					// The one check that makes this trustworthy, and it failed.
 					Add(snapshot, "pcbits", "offset",
 					    Str("0x%X REJECTED (bit%d=%d but bPlayerIsWaiting=%d)",
-					        kBitsOffset, kWaitingBitIndex, rawWaiting ? 1 : 0,
+					        CameraControlsFields::ControllerBits.offset, kWaitingBitIndex, rawWaiting ? 1 : 0,
 					        headerWaiting ? 1 : 0));
 					return;
 				}
@@ -377,14 +383,15 @@ namespace CameraControls::Probe
 
 				auto* crpc = static_cast<SDK::ACrPlayerControllerBase*>(pc);
 
-				Add(snapshot, "crpc", "menuBlockers",  Str("%d", crpc->GameMenuBlockers.Num()));
-				Add(snapshot, "crpc", "inPauseMenu",   Bl(crpc->bReplInPauseMenu));
-				Add(snapshot, "crpc", "previousPawn",  Ptr(crpc->PreviousPawn));
-				Add(snapshot, "crpc", "mainCharacter", Ptr(crpc->PlayerMainCharacter));
-				Add(snapshot, "crpc", "interactable",  Obj(crpc->CurrentInteractableActor));
-				Add(snapshot, "crpc", "activeInteract",Ptr(crpc->CurrentInteractableActorWithActiveInteraction));
-				Add(snapshot, "crpc", "zipline",       Ptr(crpc->CurrentZipline));
-				Add(snapshot, "crpc", "buildTarget",   Ptr(crpc->CurrentBuildingTarget));
+				const auto* blockers = CameraControlsFields::PcMenuBlockers.In(crpc);
+				Add(snapshot, "crpc", "menuBlockers",  blockers ? Str("%d", blockers->Num()) : std::string("unavailable"));
+				Add(snapshot, "crpc", "inPauseMenu",   Bl(CameraControlsFields::ValueOr(CameraControlsFields::PcInPauseMenu, crpc, false)));
+				Add(snapshot, "crpc", "previousPawn",  Ptr(CameraControlsFields::ValueOr(CameraControlsFields::PcPreviousPawn, crpc)));
+				Add(snapshot, "crpc", "mainCharacter", Ptr(CameraControlsFields::ValueOr(CameraControlsFields::PcMainCharacter, crpc)));
+				Add(snapshot, "crpc", "interactable",  Obj(CameraControlsFields::ValueOr(CameraControlsFields::PcInteractable, crpc)));
+				Add(snapshot, "crpc", "activeInteract",Ptr(CameraControlsFields::ValueOr(CameraControlsFields::PcActiveInteract, crpc)));
+				Add(snapshot, "crpc", "zipline",       Ptr(CameraControlsFields::ValueOr(CameraControlsFields::PcZipline, crpc)));
+				Add(snapshot, "crpc", "buildTarget",   Ptr(CameraControlsFields::ValueOr(CameraControlsFields::PcBuildTarget, crpc)));
 			}
 			catch (...)
 			{
@@ -769,14 +776,14 @@ namespace CameraControls::Probe
 
 				auto* character = static_cast<SDK::ACrCharacterPlayerBase*>(pawn);
 
-				Add(snapshot, "crchar", "disabledPawn", Bl(character->bIsDisabledPawn));
+				Add(snapshot, "crchar", "disabledPawn", Bl(CameraControlsFields::ValueOr(CameraControlsFields::CharDisabledPawn, character, false)));
 				Add(snapshot, "crchar", "interactState",
-				    Str("%d", static_cast<int>(character->InteractionState)));
-				Add(snapshot, "crchar", "dead",         Bl(character->bDead));
-				Add(snapshot, "crchar", "onLadder",     Bl(character->bOnLadder));
-				Add(snapshot, "crchar", "initialised",  Bl(character->bCharacterSelectedAndInitialized));
-				Add(snapshot, "crchar", "buildingDrone",Ptr(character->BuildingDrone));
-				Add(snapshot, "crchar", "crpc",         Ptr(character->CrPC));
+				    Str("%d", static_cast<int>(CameraControlsFields::ValueOr(CameraControlsFields::CharInteractState, character))));
+				Add(snapshot, "crchar", "dead",         Bl(CameraControlsFields::ValueOr(CameraControlsFields::CharDead, character, false)));
+				Add(snapshot, "crchar", "onLadder",     Bl(CameraControlsFields::ValueOr(CameraControlsFields::CharOnLadder, character, false)));
+				Add(snapshot, "crchar", "initialised",  Bl(CameraControlsFields::ValueOr(CameraControlsFields::CharInitialised, character, false)));
+				Add(snapshot, "crchar", "buildingDrone",Ptr(CameraControlsFields::ValueOr(CameraControlsFields::CharBuildingDrone, character)));
+				Add(snapshot, "crchar", "crpc",         Ptr(CameraControlsFields::ValueOr(CameraControlsFields::CharController, character)));
 			}
 			catch (...)
 			{

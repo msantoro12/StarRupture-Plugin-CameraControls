@@ -3,6 +3,7 @@
 #include "fov_override.h"
 #include "plugin_config.h"
 #include "plugin_helpers.h"
+#include "cameracontrols_fields.h"
 
 #include "Chimera_classes.hpp"   // UCrHeroComponent input-config binding
 #include "Engine_classes.hpp"
@@ -108,12 +109,20 @@ namespace CameraControls::Rig
 		// contextual config with that tag.
 		bool BindOneInputConfig(SDK::UCrHeroComponent* hero, const char* wanted, bool logIt)
 		{
-			for (int i = 0; i < hero->ContextualInputBindings.Num(); ++i)
+			auto* bindings = CameraControlsFields::ContextualInputBindings.In(hero);
+			if (!bindings)
 			{
-				if (!hero->ContextualInputBindings.IsValidIndex(i))
+				if (logIt)
+					LOG_WARN("Rig: the pawn's contextual input bindings are not available on this build");
+				return false;
+			}
+
+			for (int i = 0; i < bindings->Num(); ++i)
+			{
+				if (!bindings->IsValidIndex(i))
 					continue;
 
-				const SDK::FGameplayTag tag = hero->ContextualInputBindings[i].Key();
+				const SDK::FGameplayTag tag = (*bindings)[i].Key();
 				if (tag.TagName.ToString() != wanted)
 					continue;
 
@@ -151,7 +160,7 @@ namespace CameraControls::Rig
 			if (logIt)
 			{
 				LOG_WARN("Rig: input config tag '%s' is not one of this pawn's %d contextual "
-				         "configs", wanted, hero->ContextualInputBindings.Num());
+				         "configs", wanted, bindings->Num());
 			}
 
 			return false;
@@ -173,7 +182,7 @@ namespace CameraControls::Rig
 
 		SDK::UWorld* GetWorld()
 		{
-			try { return SDK::UWorld::GetWorld(); }
+			try { return PluginSdkRuntime::GetWorld(); }
 			catch (...) { return nullptr; }
 		}
 
