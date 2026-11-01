@@ -46,8 +46,9 @@ namespace CameraControlsFields
 	// 0x2A54, which is 0x2A10 + 0x44, matching the offset the generated header
 	// gives `CurrentConfig` and the layout it gives `FAuCameraConfig`. The
 	// arithmetic only closes if the run starts where we think it does.
-	constexpr int kFovOffset           = 0x2998;
-	constexpr int kAdditionalFovOffset = 0x299C;
+	//
+	// Each is a field request: the loader's map holds the row per game build,
+	// and the built CL-127004 row below stands in when the map has none.
 
 	// `ULocalPlayer::Origin` and `::Size` -- two FVector2Ds, which are pairs of
 	// doubles in UE5. Neither is a UPROPERTY, so they land inside the
@@ -59,9 +60,9 @@ namespace CameraControlsFields
 	constexpr int kSizeOffset   = 0x90;
 
 	inline auto Fov = PluginField<float>{ { "AAuPlayerCameraManager::FOV",
-		"AAuPlayerCameraManager", "FOV", PLUGIN_FIELD_NATIVE, sizeof(float), kFovOffset } };
+		"AAuPlayerCameraManager", "FOV", PLUGIN_FIELD_NATIVE, sizeof(float), 0x2998 } };
 	inline auto AdditionalFovOffset = PluginField<float>{ { "AAuPlayerCameraManager::AdditionalFOVOffset",
-		"AAuPlayerCameraManager", "AdditionalFOVOffset", PLUGIN_FIELD_NATIVE, sizeof(float), kAdditionalFovOffset } };
+		"AAuPlayerCameraManager", "AdditionalFOVOffset", PLUGIN_FIELD_NATIVE, sizeof(float), 0x299C } };
 	inline auto LocalPlayerOrigin = PluginField<SDK::FVector2D>{ { "ULocalPlayer::Origin",
 		"ULocalPlayer", "Origin", PLUGIN_FIELD_NATIVE, sizeof(SDK::FVector2D), kOriginOffset } };
 	inline auto LocalPlayerSize = PluginField<SDK::FVector2D>{ { "ULocalPlayer::Size",
@@ -70,10 +71,10 @@ namespace CameraControlsFields
 	// CL-127004's rows, the build this plugin was compiled against; every other
 	// build comes from the loader's map.
 	inline const PluginFieldCandidate kFovRows[] = {
-		{ 127004, kFovOffset, sizeof(float), 0, nullptr },
+		{ 127004, 0x2998, sizeof(float), 0, nullptr },
 	};
 	inline const PluginFieldCandidate kAdditionalFovRows[] = {
-		{ 127004, kAdditionalFovOffset, sizeof(float), 0, nullptr },
+		{ 127004, 0x299C, sizeof(float), 0, nullptr },
 	};
 	inline const PluginFieldCandidate kOriginRows[] = {
 		{ 127004, kOriginOffset, sizeof(SDK::FVector2D), 0, nullptr },
@@ -244,10 +245,5 @@ namespace CameraControlsFields
 
 	// The member's value, or a fallback when the object is null or the member
 	// did not resolve.
-	template <class T, class Object>
-	T ValueOr(const PluginField<T>& field, const Object* object, T fallback = T{})
-	{
-		const T* at = field.In(static_cast<const void*>(object));
-		return at ? *at : fallback;
-	}
+	using PluginMap::ValueOr;
 }
