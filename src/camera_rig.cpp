@@ -648,6 +648,65 @@ namespace CameraControls::Rig
 		}
 	}
 
+	// Logs the hero component's exclusive and contextual config tags and its
+	// default input mappings.
+	static void LogHeroInputConfigs(SDK::UCrHeroComponent* hero)
+	{
+		using namespace CameraControlsFields;
+
+		auto* contextual = ContextualInputBindings.In(hero);
+		auto* exclusive  = ExclusiveInputBindings.In(hero);
+		auto* defaults   = DefaultInputMappings.In(hero);
+		if (!contextual || !exclusive || !defaults)
+			return;
+
+		const int contextualCount = contextual->Num();
+		const int exclusiveCount  = exclusive->Num();
+
+		LOG_TRACE("Rig: hero component %p -- %d exclusive, %d contextual input configs",
+		          static_cast<void*>(hero), exclusiveCount, contextualCount);
+
+		for (int i = 0; i < contextualCount; ++i)
+		{
+			if (!contextual->IsValidIndex(i))
+				continue;
+
+			LOG_TRACE("Rig:   contextual config tag '%s'", (*contextual)[i].Key().TagName.ToString().c_str());
+		}
+
+		for (int i = 0; i < exclusiveCount; ++i)
+		{
+			if (!exclusive->IsValidIndex(i))
+				continue;
+
+			LOG_TRACE("Rig:   exclusive config tag '%s'", (*exclusive)[i].Key().TagName.ToString().c_str());
+		}
+
+		// The list `InitializePlayerInput` adds, straight from the component.
+		//
+		// Reported by its stored asset *path*, never by resolving the soft
+		// pointer. `TSoftObjectPtr::Get()` in this SDK bottoms out in
+		// `GObjects->GetByIndex(ObjectIndex)` with no bounds check and no
+		// serial-number validation, so calling it on an entry that was never
+		// resolved indexes off the end of the object array and takes the game
+		// down. It did exactly that. The asset path is plain FName data sitting
+		// next to the weak pointer and is safe to read either way.
+		const int defaultCount = defaults->Num();
+		LOG_TRACE("Rig: hero component has %d default input mapping(s)", defaultCount);
+
+		for (int i = 0; i < defaultCount; ++i)
+		{
+			const auto& entry = (*defaults)[i];
+			const auto* mapping  = DefaultMappingContext.In(static_cast<const void*>(&entry));
+			const auto* priority = DefaultMappingPriority.In(static_cast<const void*>(&entry));
+			if (!mapping || !priority)
+				continue;
+
+			LOG_TRACE("Rig:   default mapping '%s' priority %d",
+			          mapping->ObjectID.AssetPath.AssetName.ToString().c_str(), *priority);
+		}
+	}
+
 	void RestorePlayerInputConfigs(bool repair)
 	{
 		try
@@ -669,49 +728,10 @@ namespace CameraControls::Rig
 
 			// Log the vocabulary first. Which tags this build even has is half the
 			// diagnosis, and it is the only way to know what an unbind is unbinding.
-			const int exclusiveCount  = hero->ExclusiveInputBindings.Num();
-			const int contextualCount = hero->ContextualInputBindings.Num();
-
-			LOG_TRACE("Rig: hero component %p -- %d exclusive, %d contextual input configs",
-			          static_cast<void*>(hero), exclusiveCount, contextualCount);
-
-			for (int i = 0; i < contextualCount; ++i)
-			{
-				if (!hero->ContextualInputBindings.IsValidIndex(i))
-					continue;
-
-				LOG_TRACE("Rig:   contextual config tag '%s'",
-				          hero->ContextualInputBindings[i].Key().TagName.ToString().c_str());
-			}
-
-			for (int i = 0; i < exclusiveCount; ++i)
-			{
-				if (!hero->ExclusiveInputBindings.IsValidIndex(i))
-					continue;
-
-				LOG_TRACE("Rig:   exclusive config tag '%s'",
-				          hero->ExclusiveInputBindings[i].Key().TagName.ToString().c_str());
-			}
-
-			// The list `InitializePlayerInput` adds, straight from the component.
-			//
-			// Reported by its stored asset *path*, never by resolving the soft
-			// pointer. `TSoftObjectPtr::Get()` in this SDK bottoms out in
-			// `GObjects->GetByIndex(ObjectIndex)` with no bounds check and no
-			// serial-number validation, so calling it on an entry that was never
-			// resolved indexes off the end of the object array and takes the game
-			// down. It did exactly that. The asset path is plain FName data sitting
-			// next to the weak pointer and is safe to read either way.
-			const int defaults = hero->DefaultInputMappings.Num();
-			LOG_TRACE("Rig: hero component has %d default input mapping(s)", defaults);
-
-			for (int i = 0; i < defaults; ++i)
-			{
-				const auto& entry = hero->DefaultInputMappings[i];
-				LOG_TRACE("Rig:   default mapping '%s' priority %d",
-				          entry.InputMapping.ObjectID.AssetPath.AssetName.ToString().c_str(),
-				          entry.Priority);
-			}
+			// Input diagnostics: off with the rest of them when the game moves one
+			// of these members.
+			if (CameraControlsFields::ControlProbe.On())
+				LogHeroInputConfigs(hero);
 
 			if (!repair)
 			{

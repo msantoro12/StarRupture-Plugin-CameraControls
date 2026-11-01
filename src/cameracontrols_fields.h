@@ -88,6 +88,14 @@ namespace CameraControlsFields
 
 	inline auto ContextualInputBindings = CC_FIELD(UCrHeroComponent, ContextualInputBindings);
 
+	// What RestorePlayerInputConfigs logs about the hero component, for the
+	// input diagnostics: the exclusive bindings, and the default mappings with
+	// each entry's context asset and priority.
+	inline auto ExclusiveInputBindings   = CC_FIELD(UCrHeroComponent, ExclusiveInputBindings);
+	inline auto DefaultInputMappings     = CC_FIELD(UCrHeroComponent, DefaultInputMappings);
+	inline auto DefaultMappingContext    = CC_FIELD(FInputMappingContextAndPriority, InputMapping);
+	inline auto DefaultMappingPriority   = CC_FIELD(FInputMappingContextAndPriority, Priority);
+
 	// The player character's survival attribute sets.
 	inline auto HealthSet    = CC_FIELD(ACrCharacterPlayerBase, HealthAttributes);
 	inline auto CaloriesSet  = CC_FIELD(ACrCharacterPlayerBase, CaloriesAttributes);
@@ -155,6 +163,9 @@ namespace CameraControlsFields
 	inline auto WaveSettingsSize  = SR_SIZE_CHECK(FCrEnviroWaveSettings);
 	inline auto BindingSize       = SR_SIZE_CHECK(FCrContextualInputBinding);
 
+	// The default mappings array is walked with the compiled element size.
+	inline auto MappingSize       = SR_SIZE_CHECK(FInputMappingContextAndPriority);
+
 	// The parts of the plugin that can be off while the rest runs. A member that
 	// does not resolve on a game build turns off the part that reads it, and the
 	// config entries it drives are greyed out. The contextual input bindings
@@ -189,7 +200,10 @@ namespace CameraControlsFields
 		  "ACrPlayerControllerBase::bReplInPauseMenu", "ACrPlayerControllerBase::PreviousPawn",
 		  "ACrPlayerControllerBase::PlayerMainCharacter", "ACrPlayerControllerBase::CurrentInteractableActor",
 		  "ACrPlayerControllerBase::CurrentInteractableActorWithActiveInteraction",
-		  "ACrPlayerControllerBase::CurrentZipline", "ACrPlayerControllerBase::CurrentBuildingTarget" }, {} };
+		  "ACrPlayerControllerBase::CurrentZipline", "ACrPlayerControllerBase::CurrentBuildingTarget",
+		  "UCrHeroComponent::ExclusiveInputBindings", "UCrHeroComponent::DefaultInputMappings",
+		  "FInputMappingContextAndPriority::InputMapping", "FInputMappingContextAndPriority::Priority",
+		  "FInputMappingContextAndPriority" }, {} };
 
 	// Call before Resolve, so a miss lands on a feature and not on the plugin.
 	inline void DeclareFeatures(IPluginSelf* self, IPluginHookScanner* scanner)
@@ -213,7 +227,8 @@ namespace CameraControlsFields
 		nativeOk = native(LocalPlayerSize, kSizeRows, std::size(kSizeRows)) && nativeOk;
 
 		return PluginMap::ResolveFields(scanner, self,
-			ContextualInputBindings,
+			ContextualInputBindings, ExclusiveInputBindings, DefaultInputMappings,
+			DefaultMappingContext, DefaultMappingPriority,
 			HealthSet, CaloriesSet, HydrationSet, OxygenSet, EnergySet, ShieldSet,
 			ToxicitySet, RadiationSet, HeatSet, DrainSet, CorrosionSet, InfectionSet,
 			HealthCurrent, HealthMax, CaloriesCurrent, CaloriesMax, HydrationCurrent, HydrationMax,
@@ -224,7 +239,7 @@ namespace CameraControlsFields
 			CharBuildingDrone, CharController,
 			PcMenuBlockers, PcInPauseMenu, PcPreviousPawn, PcMainCharacter, PcInteractable,
 			PcActiveInteract, PcZipline, PcBuildTarget,
-			WaveSpeed, WaveSettingsSize, BindingSize) && nativeOk;
+			WaveSpeed, WaveSettingsSize, BindingSize, MappingSize) && nativeOk;
 	}
 
 	// The member's value, or a fallback when the object is null or the member
