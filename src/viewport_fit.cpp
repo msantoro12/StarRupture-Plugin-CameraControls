@@ -143,7 +143,7 @@ namespace CameraControls::ViewportFit
 	}
 
 	bool IsActive()    { return g_active; }
-	bool IsSupported() { return g_supported; }
+	bool IsSupported() { return g_supported && Fields::ViewportMask.On(); }
 
 	void ForgetWorldState()
 	{
@@ -156,7 +156,7 @@ namespace CameraControls::ViewportFit
 
 	bool Apply(float x, float y, float width, float height)
 	{
-		if (!g_supported)
+		if (!IsSupported())
 			return false;
 
 		SDK::ULocalPlayer* player = GetLocalPlayer();

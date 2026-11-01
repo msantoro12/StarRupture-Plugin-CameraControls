@@ -155,6 +155,49 @@ namespace CameraControlsFields
 	inline auto WaveSettingsSize  = SR_SIZE_CHECK(FCrEnviroWaveSettings);
 	inline auto BindingSize       = SR_SIZE_CHECK(FCrContextualInputBinding);
 
+	// The parts of the plugin that can be off while the rest runs. A member that
+	// does not resolve on a game build turns off the part that reads it, and the
+	// config entries it drives are greyed out. The contextual input bindings
+	// stay core: without them the player's keys cannot be given back.
+	inline PluginMap::Feature FovControl{ "fov", "Field of view control",
+		{ "AAuPlayerCameraManager::FOV", "AAuPlayerCameraManager::AdditionalFOVOffset" },
+		{ "Keybinds.FovIn", "Keybinds.FovOut" } };
+	inline PluginMap::Feature ViewportMask{ "viewport", "Masking the game view beside the panels",
+		{ "ULocalPlayer::Origin", "ULocalPlayer::Size" },
+		{ "Editor.FitViewport" } };
+	inline PluginMap::Feature VitalsLock{ "vitals", "Locking health, food and water",
+		{ "ACrCharacterPlayerBase::HealthAttributes", "UCrHealthAttributeSet::CurrentHealth", "UCrHealthAttributeSet::MaxHealth",
+		  "ACrCharacterPlayerBase::CaloriesAttributes", "UCrCaloriesAttributeSet::CurrentCalories", "UCrCaloriesAttributeSet::MaxCalories",
+		  "ACrCharacterPlayerBase::HydrationAttributes", "UCrHydrationAttributeSet::CurrentHydration", "UCrHydrationAttributeSet::MaxHydration",
+		  "ACrCharacterPlayerBase::OxygenAttributes", "UCrOxygenAttributeSet::CurrentOxygen", "UCrOxygenAttributeSet::MaxOxygen",
+		  "ACrCharacterPlayerBase::EnergyAttributes", "UCrEnergyAttributeSet::CurrentEnergy", "UCrEnergyAttributeSet::MaxEnergy",
+		  "ACrCharacterPlayerBase::ShieldAttributes", "UCrShieldAttributeSet::CurrentShield", "UCrShieldAttributeSet::MaxShield",
+		  "ACrCharacterPlayerBase::ToxicityAttributes", "UCrToxicityAttributeSet::CurrentToxicity", "UCrToxicityAttributeSet::MinToxicity",
+		  "ACrCharacterPlayerBase::RadiationAttributes", "UCrRadiationAttributeSet::CurrentRadiation", "UCrRadiationAttributeSet::MinRadiation",
+		  "ACrCharacterPlayerBase::HeatAttributes", "UCrHeatAttributeSet::CurrentHeat", "UCrHeatAttributeSet::MinHeat",
+		  "ACrCharacterPlayerBase::DrainAttributes", "UCrDrainAttributeSet::CurrentDrain", "UCrDrainAttributeSet::MinDrain",
+		  "ACrCharacterPlayerBase::CorrosionAttributes", "UCrCorrosionAttributeSet::CurrentCorrosion", "UCrCorrosionAttributeSet::MinCorrosion",
+		  "ACrCharacterPlayerBase::InfectionAttributes", "UCrInfectionAttributeSet::CurrentInfection", "UCrInfectionAttributeSet::MinInfection" },
+		{ "Safety.LockVitals" } };
+	inline PluginMap::Feature RupturePhase{ "rupture", "Rupture phase cues",
+		{ "FCrEnviroWaveSettings::WaveSpeed", "FCrEnviroWaveSettings" }, {} };
+	inline PluginMap::Feature ControlProbe{ "probe", "Input diagnostics",
+		{ "ACrCharacterPlayerBase::bIsDisabledPawn", "ACrCharacterPlayerBase::InteractionState",
+		  "ACrCharacterPlayerBase::bDead", "ACrCharacterPlayerBase::bOnLadder",
+		  "ACrCharacterPlayerBase::bCharacterSelectedAndInitialized", "ACrCharacterPlayerBase::BuildingDrone",
+		  "ACrCharacterPlayerBase::CrPC", "ACrPlayerControllerBase::GameMenuBlockers",
+		  "ACrPlayerControllerBase::bReplInPauseMenu", "ACrPlayerControllerBase::PreviousPawn",
+		  "ACrPlayerControllerBase::PlayerMainCharacter", "ACrPlayerControllerBase::CurrentInteractableActor",
+		  "ACrPlayerControllerBase::CurrentInteractableActorWithActiveInteraction",
+		  "ACrPlayerControllerBase::CurrentZipline", "ACrPlayerControllerBase::CurrentBuildingTarget" }, {} };
+
+	// Call before Resolve, so a miss lands on a feature and not on the plugin.
+	inline void DeclareFeatures(IPluginSelf* self, IPluginHookScanner* scanner)
+	{
+		PluginMap::DeclareFeatures(scanner, self,
+			FovControl, ViewportMask, VitalsLock, RupturePhase, ControlProbe);
+	}
+
 	// Asks the loader for every row above. False when any did not resolve; the
 	// loader has then recorded the failure and refuses the plugin.
 	inline bool Resolve(IPluginSelf* self, IPluginHookScanner* scanner)

@@ -365,7 +365,7 @@ namespace CameraControls::Probe
 		// from our own bug right up until you can see the count.
 		void CaptureGameController(SDK::APlayerController* pc, Snapshot& snapshot)
 		{
-			if (!pc)
+			if (!pc || !CameraControlsFields::ControlProbe.On())
 				return;
 
 			try
@@ -758,7 +758,7 @@ namespace CameraControls::Probe
 		// is exactly why they are worth watching.
 		void CaptureGameCharacter(SDK::APawn* pawn, Snapshot& snapshot)
 		{
-			if (!pawn)
+			if (!pawn || !CameraControlsFields::ControlProbe.On())
 				return;
 
 			try

@@ -90,7 +90,7 @@ namespace CameraControls::FovOverride
 		}
 	}
 
-	bool IsSupported() { return g_supported; }
+	bool IsSupported() { return g_supported && Fields::FovControl.On(); }
 	bool IsEngaged()   { return g_engaged; }
 
 	void ForgetWorldState()
@@ -106,7 +106,7 @@ namespace CameraControls::FovOverride
 		if (g_engaged)
 			return true;
 
-		if (!g_supported)
+		if (!IsSupported())
 			return false;
 
 		SDK::AAuPlayerCameraManager* manager = GetManager();
