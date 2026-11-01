@@ -46,8 +46,9 @@ namespace CameraControlsFields
 	// 0x2A54, which is 0x2A10 + 0x44, matching the offset the generated header
 	// gives `CurrentConfig` and the layout it gives `FAuCameraConfig`. The
 	// arithmetic only closes if the run starts where we think it does.
-	constexpr int kFovOffset           = 0x2998;
-	constexpr int kAdditionalFovOffset = 0x299C;
+	//
+	// Each is a field request: the loader's map holds the row per game build,
+	// and the built CL-127004 row below stands in when the map has none.
 
 	// `ULocalPlayer::Origin` and `::Size` -- two FVector2Ds, which are pairs of
 	// doubles in UE5. Neither is a UPROPERTY, so they land inside the
@@ -59,9 +60,9 @@ namespace CameraControlsFields
 	constexpr int kSizeOffset   = 0x90;
 
 	inline auto Fov = PluginField<float>{ { "AAuPlayerCameraManager::FOV",
-		"AAuPlayerCameraManager", "FOV", PLUGIN_FIELD_NATIVE, sizeof(float), kFovOffset } };
+		"AAuPlayerCameraManager", "FOV", PLUGIN_FIELD_NATIVE, sizeof(float), 0x2998 } };
 	inline auto AdditionalFovOffset = PluginField<float>{ { "AAuPlayerCameraManager::AdditionalFOVOffset",
-		"AAuPlayerCameraManager", "AdditionalFOVOffset", PLUGIN_FIELD_NATIVE, sizeof(float), kAdditionalFovOffset } };
+		"AAuPlayerCameraManager", "AdditionalFOVOffset", PLUGIN_FIELD_NATIVE, sizeof(float), 0x299C } };
 	inline auto LocalPlayerOrigin = PluginField<SDK::FVector2D>{ { "ULocalPlayer::Origin",
 		"ULocalPlayer", "Origin", PLUGIN_FIELD_NATIVE, sizeof(SDK::FVector2D), kOriginOffset } };
 	inline auto LocalPlayerSize = PluginField<SDK::FVector2D>{ { "ULocalPlayer::Size",
@@ -70,10 +71,10 @@ namespace CameraControlsFields
 	// CL-127004's rows, the build this plugin was compiled against; every other
 	// build comes from the loader's map.
 	inline const PluginFieldCandidate kFovRows[] = {
-		{ 127004, kFovOffset, sizeof(float), 0, nullptr },
+		{ 127004, 0x2998, sizeof(float), 0, nullptr },
 	};
 	inline const PluginFieldCandidate kAdditionalFovRows[] = {
-		{ 127004, kAdditionalFovOffset, sizeof(float), 0, nullptr },
+		{ 127004, 0x299C, sizeof(float), 0, nullptr },
 	};
 	inline const PluginFieldCandidate kOriginRows[] = {
 		{ 127004, kOriginOffset, sizeof(SDK::FVector2D), 0, nullptr },
@@ -87,6 +88,14 @@ namespace CameraControlsFields
 	// -------------------------------------------------------------------
 
 	inline auto ContextualInputBindings = CC_FIELD(UCrHeroComponent, ContextualInputBindings);
+
+	// What RestorePlayerInputConfigs logs about the hero component, for the
+	// input diagnostics: the exclusive bindings, and the default mappings with
+	// each entry's context asset and priority.
+	inline auto ExclusiveInputBindings   = CC_FIELD(UCrHeroComponent, ExclusiveInputBindings);
+	inline auto DefaultInputMappings     = CC_FIELD(UCrHeroComponent, DefaultInputMappings);
+	inline auto DefaultMappingContext    = CC_FIELD(FInputMappingContextAndPriority, InputMapping);
+	inline auto DefaultMappingPriority   = CC_FIELD(FInputMappingContextAndPriority, Priority);
 
 	// The player character's survival attribute sets.
 	inline auto HealthSet    = CC_FIELD(ACrCharacterPlayerBase, HealthAttributes);
@@ -155,6 +164,55 @@ namespace CameraControlsFields
 	inline auto WaveSettingsSize  = SR_SIZE_CHECK(FCrEnviroWaveSettings);
 	inline auto BindingSize       = SR_SIZE_CHECK(FCrContextualInputBinding);
 
+	// The default mappings array is walked with the compiled element size.
+	inline auto MappingSize       = SR_SIZE_CHECK(FInputMappingContextAndPriority);
+
+	// The parts of the plugin that can be off while the rest runs. A member that
+	// does not resolve on a game build turns off the part that reads it, and the
+	// config entries it drives are greyed out. The contextual input bindings
+	// stay core: without them the player's keys cannot be given back.
+	inline PluginMap::Feature FovControl{ "fov", "Field of view control",
+		{ "AAuPlayerCameraManager::FOV", "AAuPlayerCameraManager::AdditionalFOVOffset" },
+		{ "Keybinds.FovIn", "Keybinds.FovOut" } };
+	inline PluginMap::Feature ViewportMask{ "viewport", "Masking the game view beside the panels",
+		{ "ULocalPlayer::Origin", "ULocalPlayer::Size" },
+		{ "Editor.FitViewport" } };
+	inline PluginMap::Feature VitalsLock{ "vitals", "Locking health, food and water",
+		{ "ACrCharacterPlayerBase::HealthAttributes", "UCrHealthAttributeSet::CurrentHealth", "UCrHealthAttributeSet::MaxHealth",
+		  "ACrCharacterPlayerBase::CaloriesAttributes", "UCrCaloriesAttributeSet::CurrentCalories", "UCrCaloriesAttributeSet::MaxCalories",
+		  "ACrCharacterPlayerBase::HydrationAttributes", "UCrHydrationAttributeSet::CurrentHydration", "UCrHydrationAttributeSet::MaxHydration",
+		  "ACrCharacterPlayerBase::OxygenAttributes", "UCrOxygenAttributeSet::CurrentOxygen", "UCrOxygenAttributeSet::MaxOxygen",
+		  "ACrCharacterPlayerBase::EnergyAttributes", "UCrEnergyAttributeSet::CurrentEnergy", "UCrEnergyAttributeSet::MaxEnergy",
+		  "ACrCharacterPlayerBase::ShieldAttributes", "UCrShieldAttributeSet::CurrentShield", "UCrShieldAttributeSet::MaxShield",
+		  "ACrCharacterPlayerBase::ToxicityAttributes", "UCrToxicityAttributeSet::CurrentToxicity", "UCrToxicityAttributeSet::MinToxicity",
+		  "ACrCharacterPlayerBase::RadiationAttributes", "UCrRadiationAttributeSet::CurrentRadiation", "UCrRadiationAttributeSet::MinRadiation",
+		  "ACrCharacterPlayerBase::HeatAttributes", "UCrHeatAttributeSet::CurrentHeat", "UCrHeatAttributeSet::MinHeat",
+		  "ACrCharacterPlayerBase::DrainAttributes", "UCrDrainAttributeSet::CurrentDrain", "UCrDrainAttributeSet::MinDrain",
+		  "ACrCharacterPlayerBase::CorrosionAttributes", "UCrCorrosionAttributeSet::CurrentCorrosion", "UCrCorrosionAttributeSet::MinCorrosion",
+		  "ACrCharacterPlayerBase::InfectionAttributes", "UCrInfectionAttributeSet::CurrentInfection", "UCrInfectionAttributeSet::MinInfection" },
+		{ "Safety.LockVitals" } };
+	inline PluginMap::Feature RupturePhase{ "rupture", "Rupture phase cues",
+		{ "FCrEnviroWaveSettings::WaveSpeed", "FCrEnviroWaveSettings" }, {} };
+	inline PluginMap::Feature ControlProbe{ "probe", "Input diagnostics",
+		{ "ACrCharacterPlayerBase::bIsDisabledPawn", "ACrCharacterPlayerBase::InteractionState",
+		  "ACrCharacterPlayerBase::bDead", "ACrCharacterPlayerBase::bOnLadder",
+		  "ACrCharacterPlayerBase::bCharacterSelectedAndInitialized", "ACrCharacterPlayerBase::BuildingDrone",
+		  "ACrCharacterPlayerBase::CrPC", "ACrPlayerControllerBase::GameMenuBlockers",
+		  "ACrPlayerControllerBase::bReplInPauseMenu", "ACrPlayerControllerBase::PreviousPawn",
+		  "ACrPlayerControllerBase::PlayerMainCharacter", "ACrPlayerControllerBase::CurrentInteractableActor",
+		  "ACrPlayerControllerBase::CurrentInteractableActorWithActiveInteraction",
+		  "ACrPlayerControllerBase::CurrentZipline", "ACrPlayerControllerBase::CurrentBuildingTarget",
+		  "UCrHeroComponent::ExclusiveInputBindings", "UCrHeroComponent::DefaultInputMappings",
+		  "FInputMappingContextAndPriority::InputMapping", "FInputMappingContextAndPriority::Priority",
+		  "FInputMappingContextAndPriority" }, {} };
+
+	// Call before Resolve, so a miss lands on a feature and not on the plugin.
+	inline void DeclareFeatures(IPluginSelf* self, IPluginHookScanner* scanner)
+	{
+		PluginMap::DeclareFeatures(scanner, self,
+			FovControl, ViewportMask, VitalsLock, RupturePhase, ControlProbe);
+	}
+
 	// Asks the loader for every row above. False when any did not resolve; the
 	// loader has then recorded the failure and refuses the plugin.
 	inline bool Resolve(IPluginSelf* self, IPluginHookScanner* scanner)
@@ -170,7 +228,8 @@ namespace CameraControlsFields
 		nativeOk = native(LocalPlayerSize, kSizeRows, std::size(kSizeRows)) && nativeOk;
 
 		return PluginMap::ResolveFields(scanner, self,
-			ContextualInputBindings,
+			ContextualInputBindings, ExclusiveInputBindings, DefaultInputMappings,
+			DefaultMappingContext, DefaultMappingPriority,
 			HealthSet, CaloriesSet, HydrationSet, OxygenSet, EnergySet, ShieldSet,
 			ToxicitySet, RadiationSet, HeatSet, DrainSet, CorrosionSet, InfectionSet,
 			HealthCurrent, HealthMax, CaloriesCurrent, CaloriesMax, HydrationCurrent, HydrationMax,
@@ -181,15 +240,10 @@ namespace CameraControlsFields
 			CharBuildingDrone, CharController,
 			PcMenuBlockers, PcInPauseMenu, PcPreviousPawn, PcMainCharacter, PcInteractable,
 			PcActiveInteract, PcZipline, PcBuildTarget,
-			WaveSpeed, WaveSettingsSize, BindingSize) && nativeOk;
+			WaveSpeed, WaveSettingsSize, BindingSize, MappingSize) && nativeOk;
 	}
 
 	// The member's value, or a fallback when the object is null or the member
 	// did not resolve.
-	template <class T, class Object>
-	T ValueOr(const PluginField<T>& field, const Object* object, T fallback = T{})
-	{
-		const T* at = field.In(static_cast<const void*>(object));
-		return at ? *at : fallback;
-	}
+	using PluginMap::ValueOr;
 }

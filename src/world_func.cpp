@@ -118,6 +118,12 @@ namespace CameraControls::WorldFunc
 					// and no stage durations, which starts and then never does
 					// anything. So the settings come from the rupture the game
 					// is already running -- which means there has to be one.
+					if (!CameraControlsFields::RupturePhase.On())
+					{
+						outMessage = "Rupture phase cues are unavailable on this game build";
+						return false;
+					}
+
 					if (!wave->IsWaveInProgress())
 					{
 						outMessage = "No rupture running -- put a Start rupture cue first";

@@ -57,10 +57,7 @@ static PluginInfo s_pluginInfo = {
 	PLUGIN_INTERFACE_VERSION,
 	PLUGIN_TARGET_THIS,
 	PLUGIN_GAME_BUILT_CL,
-	// PLUGIN_MAP_MIGRATED is not set yet: it needs the loader's admission by built
-	// CL and the CI check of the used set. Until then the plugin runs only on
-	// the game build it was compiled for.
-	0
+	PLUGIN_MAP_MIGRATED
 };
 
 namespace
@@ -1480,7 +1477,7 @@ namespace
 
 		DeathGuard::Hold();
 
-		if (state.options.lockVitals)
+		if (state.options.lockVitals && CameraControlsFields::VitalsLock.On())
 			Vitals::Pin();
 
 		if (state.options.protectPlayer)
@@ -1577,7 +1574,7 @@ namespace
 	{
 		using Cfg = CameraControlsConfig::Config;
 
-		state.options.fitViewport           = Cfg::FitViewport();
+		state.options.fitViewport           = CameraControlsFields::ViewportMask.On() && Cfg::FitViewport();
 		state.options.showGizmos            = Cfg::ShowGizmos();
 		state.options.gizmosDuringPlayback  = Cfg::GizmosDuringPlayback();
 		state.options.hideGameHud           = Cfg::HideGameHud();
@@ -1593,7 +1590,7 @@ namespace
 		state.options.gizmoNearCull         = Clamp(Cfg::GizmoNearCull(), 0.0f, 5000.0f);
 		state.options.stashAltitude         = Clamp(Cfg::StashAltitude(), -200000.0f, 200000.0f);
 		state.options.showPlayerMarker      = Cfg::ShowPlayerMarker();
-		state.options.lockVitals            = Cfg::LockVitals();
+		state.options.lockVitals            = CameraControlsFields::VitalsLock.On() && Cfg::LockVitals();
 	}
 
 	// Writes the live Options back out, so settings tuned in the editor survive
@@ -1606,7 +1603,8 @@ namespace
 			return;
 
 		auto* config = self->config;
-		config->WriteBool (self, "Editor", "FitViewport",           state.options.fitViewport);
+		if (CameraControlsFields::ViewportMask.On())
+			config->WriteBool (self, "Editor", "FitViewport",           state.options.fitViewport);
 		config->WriteBool (self, "Editor", "ShowGizmos",            state.options.showGizmos);
 		config->WriteBool (self, "Editor", "GizmosDuringPlayback",  state.options.gizmosDuringPlayback);
 		config->WriteBool (self, "Editor", "HideGameHud",           state.options.hideGameHud);
@@ -1615,7 +1613,8 @@ namespace
 		config->WriteFloat(self, "Editor", "GizmoNearCull",         state.options.gizmoNearCull);
 		config->WriteFloat(self, "Safety", "StashAltitude",         state.options.stashAltitude);
 		config->WriteBool (self, "Safety", "ShowPlayerMarker",      state.options.showPlayerMarker);
-		config->WriteBool (self, "Safety", "LockVitals",           state.options.lockVitals);
+		if (CameraControlsFields::VitalsLock.On())
+			config->WriteBool (self, "Safety", "LockVitals",           state.options.lockVitals);
 		config->WriteBool (self, "Safety", "ProtectPlayer",         state.options.protectPlayer);
 		config->WriteBool (self, "Safety", "SpawnHabitat",          state.options.spawnHabitat);
 		config->WriteBool (self, "Safety", "PreventDeath",          state.options.preventDeath);
@@ -1636,6 +1635,7 @@ extern "C" {
 	__declspec(dllexport) void OnPluginLoadHooks(IPluginSelf* self, IPluginHookScanner* scanner)
 	{
 		g_self = self;
+		CameraControlsFields::DeclareFeatures(self, scanner);
 		CameraControlsFields::Resolve(self, scanner);
 	}
 
