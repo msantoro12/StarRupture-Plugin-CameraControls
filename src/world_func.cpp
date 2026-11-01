@@ -1,5 +1,6 @@
 #include "world_func.h"
 #include "plugin_helpers.h"
+#include "cameracontrols_fields.h"
 
 #include "Chimera_classes.hpp"
 
@@ -124,7 +125,8 @@ namespace CameraControls::WorldFunc
 					}
 
 					SDK::FCrEnviroWaveSettings settings = wave->GetCurrentStageSettings();
-					if (!(settings.WaveSpeed > 0.0f))
+					const float* waveSpeed = CameraControlsFields::WaveSpeed.In(&settings);
+					if (!waveSpeed || !(*waveSpeed > 0.0f))
 					{
 						outMessage = "The running rupture reported no settings -- phase unchanged";
 						return false;
