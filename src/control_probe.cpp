@@ -326,18 +326,13 @@ namespace CameraControls::Probe
 		// -------------------------------------------------------------------
 		void CaptureControllerBits(SDK::APlayerController* pc, Snapshot& snapshot)
 		{
+			constexpr int kBitsOffset      = 0x4D0;
 			constexpr int kWaitingBitIndex = 4;
 
 			try
 			{
-				const uint8_t* bitsAt = CameraControlsFields::ControllerBits.In(pc);
-				if (!bitsAt)
-				{
-					Add(snapshot, "pcbits", "ptr", "unavailable");
-					return;
-				}
-
-				const uint8_t byte = *bitsAt;
+				const uint8_t byte =
+					*(reinterpret_cast<const uint8_t*>(pc) + kBitsOffset);
 
 				const bool rawWaiting    = (byte & (1u << kWaitingBitIndex)) != 0;
 				const bool headerWaiting = pc->bPlayerIsWaiting != 0;
@@ -347,7 +342,7 @@ namespace CameraControls::Probe
 					// The one check that makes this trustworthy, and it failed.
 					Add(snapshot, "pcbits", "offset",
 					    Str("0x%X REJECTED (bit%d=%d but bPlayerIsWaiting=%d)",
-					        CameraControlsFields::ControllerBits.offset, kWaitingBitIndex, rawWaiting ? 1 : 0,
+					        kBitsOffset, kWaitingBitIndex, rawWaiting ? 1 : 0,
 					        headerWaiting ? 1 : 0));
 					return;
 				}

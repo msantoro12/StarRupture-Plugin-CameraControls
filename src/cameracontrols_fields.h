@@ -58,11 +58,6 @@ namespace CameraControlsFields
 	constexpr int kOriginOffset = 0x80;
 	constexpr int kSizeOffset   = 0x90;
 
-	// The byte of `APlayerController` that holds `bPlayerIsWaiting` (bit 4)
-	// next to the engine's cinematic-mode bits, which have no name in the
-	// generated class. The probe reads the whole byte.
-	constexpr int kBitsOffset = 0x4D0;
-
 	inline auto Fov = PluginField<float>{ { "AAuPlayerCameraManager::FOV",
 		"AAuPlayerCameraManager", "FOV", PLUGIN_FIELD_NATIVE, sizeof(float), kFovOffset } };
 	inline auto AdditionalFovOffset = PluginField<float>{ { "AAuPlayerCameraManager::AdditionalFOVOffset",
@@ -71,30 +66,20 @@ namespace CameraControlsFields
 		"ULocalPlayer", "Origin", PLUGIN_FIELD_NATIVE, sizeof(SDK::FVector2D), kOriginOffset } };
 	inline auto LocalPlayerSize = PluginField<SDK::FVector2D>{ { "ULocalPlayer::Size",
 		"ULocalPlayer", "Size", PLUGIN_FIELD_NATIVE, sizeof(SDK::FVector2D), kSizeOffset } };
-	inline auto ControllerBits = PluginField<uint8_t>{ { "APlayerController::bPlayerIsWaiting",
-		"APlayerController", "bPlayerIsWaiting", PLUGIN_FIELD_NATIVE, sizeof(uint8_t), kBitsOffset } };
 
-	// None of these moved between CL-127004 and CL-128786, so both builds carry
-	// the current offset.
+	// CL-127004's rows, the build this plugin was compiled against; every other
+	// build comes from the loader's map.
 	inline const PluginFieldCandidate kFovRows[] = {
 		{ 127004, kFovOffset, sizeof(float), 0, nullptr },
-		{ 128786, kFovOffset, sizeof(float), 0, nullptr },
 	};
 	inline const PluginFieldCandidate kAdditionalFovRows[] = {
 		{ 127004, kAdditionalFovOffset, sizeof(float), 0, nullptr },
-		{ 128786, kAdditionalFovOffset, sizeof(float), 0, nullptr },
 	};
 	inline const PluginFieldCandidate kOriginRows[] = {
 		{ 127004, kOriginOffset, sizeof(SDK::FVector2D), 0, nullptr },
-		{ 128786, kOriginOffset, sizeof(SDK::FVector2D), 0, nullptr },
 	};
 	inline const PluginFieldCandidate kSizeRows[] = {
 		{ 127004, kSizeOffset, sizeof(SDK::FVector2D), 0, nullptr },
-		{ 128786, kSizeOffset, sizeof(SDK::FVector2D), 0, nullptr },
-	};
-	inline const PluginFieldCandidate kBitsRows[] = {
-		{ 127004, kBitsOffset, sizeof(uint8_t), 0, nullptr },
-		{ 128786, kBitsOffset, sizeof(uint8_t), 0, nullptr },
 	};
 
 	// -------------------------------------------------------------------
@@ -183,7 +168,6 @@ namespace CameraControlsFields
 		nativeOk = native(AdditionalFovOffset, kAdditionalFovRows, std::size(kAdditionalFovRows)) && nativeOk;
 		nativeOk = native(LocalPlayerOrigin, kOriginRows, std::size(kOriginRows)) && nativeOk;
 		nativeOk = native(LocalPlayerSize, kSizeRows, std::size(kSizeRows)) && nativeOk;
-		nativeOk = native(ControllerBits, kBitsRows, std::size(kBitsRows)) && nativeOk;
 
 		return PluginMap::ResolveFields(scanner, self,
 			ContextualInputBindings,
