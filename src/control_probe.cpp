@@ -261,7 +261,12 @@ namespace CameraControls::Probe
 			Add(snapshot, "pc", "camManager",   Ptr(pc->PlayerCameraManager));
 			Add(snapshot, "pc", "player",       Ptr(pc->Player));
 
-			Add(snapshot, "pc", "showCursor",   Bl(pc->bShowMouseCursor != 0));
+			// The loader's reading of the same flag, as of its last game tick.
+			IPluginHooks* hooks = GetHooks();
+			if (hooks && hooks->GameMenu)
+				Add(snapshot, "pc", "showCursor", Bl((hooks->GameMenu->GetUIState() & PLUGIN_UI_CURSOR_UP) != 0));
+			else
+				Add(snapshot, "pc", "showCursor", "unreadable");
 			Add(snapshot, "pc", "clickEvents",  Bl(pc->bEnableClickEvents != 0));
 			Add(snapshot, "pc", "autoCamera",   Bl(pc->bAutoManageActiveCameraTarget));
 			Add(snapshot, "pc", "isWaiting",    Bl(pc->bPlayerIsWaiting != 0));
